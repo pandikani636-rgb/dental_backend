@@ -114,9 +114,18 @@ exports.updateBanner = asyncErrorHandler(async (req, res, next) => {
     if (req.files && req.files.image) {
         // Delete old media file if exists
         if (banner.media && banner.media.url) {
-            const filePath = path.join(__dirname, "../", banner.media.url);
-            if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
+            if (banner.media.url.startsWith('http')) {
+                const cloudinary = require('cloudinary').v2;
+                try {
+                    await cloudinary.uploader.destroy(banner.media.public_id);
+                } catch (err) {
+                    console.error("Failed to delete banner media from Cloudinary:", err);
+                }
+            } else {
+                const filePath = path.join(__dirname, "../", banner.media.url);
+                if (fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath);
+                }
             }
         }
 
@@ -136,9 +145,18 @@ exports.updateBanner = asyncErrorHandler(async (req, res, next) => {
             updatedData.videoUrl = videoUrl.trim();
             // Clear media if switching to video
             if (banner.media && banner.media.url) {
-                const filePath = path.join(__dirname, "../", banner.media.url);
-                if (fs.existsSync(filePath)) {
-                    fs.unlinkSync(filePath);
+                if (banner.media.url.startsWith('http')) {
+                    const cloudinary = require('cloudinary').v2;
+                    try {
+                        await cloudinary.uploader.destroy(banner.media.public_id);
+                    } catch (err) {
+                        console.error("Failed to delete banner media from Cloudinary:", err);
+                    }
+                } else {
+                    const filePath = path.join(__dirname, "../", banner.media.url);
+                    if (fs.existsSync(filePath)) {
+                        fs.unlinkSync(filePath);
+                    }
                 }
             }
             updatedData.media = undefined;
@@ -185,9 +203,18 @@ exports.deleteBanner = asyncErrorHandler(async (req, res, next) => {
 
     // Delete media from uploads folder
     if (banner.media && banner.media.url) {
-        const filePath = path.join(__dirname, "../", banner.media.url);
-        if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
+        if (banner.media.url.startsWith('http')) {
+            const cloudinary = require('cloudinary').v2;
+            try {
+                await cloudinary.uploader.destroy(banner.media.public_id);
+            } catch (err) {
+                console.error("Failed to delete banner media from Cloudinary:", err);
+            }
+        } else {
+            const filePath = path.join(__dirname, "../", banner.media.url);
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+            }
         }
     }
 

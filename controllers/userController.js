@@ -99,8 +99,8 @@ exports.logoutUser = asyncErrorHandler(async (req, res, next) => {
 exports.getUserDetails = asyncErrorHandler(async (req, res, next) => {
     const user = await User.findById(req.user.id);
 
-    // Convert avatar path to full URL if exists
-    if (user.avatar && user.avatar.url) {
+    // Convert avatar path to full URL if exists and is local
+    if (user.avatar && user.avatar.url && !user.avatar.url.startsWith('http')) {
         user.avatar.url = `${req.protocol}://${req.get('host')}/${user.avatar.url.replace(/\\/g, '/')}`;
     }
 
@@ -374,8 +374,8 @@ exports.getSingleUser = asyncErrorHandler(async (req, res, next) => {
         return next(new ErrorHandler(`User doesn't exist with id: ${req.params.id}`, 404));
     }
 
-    // Convert avatar path to full URL if exists
-    if (user.avatar && user.avatar.url) {
+    // Convert avatar path to full URL if exists and is local
+    if (user.avatar && user.avatar.url && !user.avatar.url.startsWith('http')) {
         user.avatar.url = `${req.protocol}://${req.get('host')}/${user.avatar.url.replace(/\\/g, '/')}`;
     }
 
