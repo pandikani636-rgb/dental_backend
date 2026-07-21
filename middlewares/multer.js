@@ -2,15 +2,17 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 
+const uploadRoot = process.env.VERCEL ? "/tmp/uploads" : "uploads";
+
 // Ensure upload directories exist
 const ensureDirectoriesExist = () => {
     const directories = [
-        'uploads/images',
-        'uploads/videos',
-        'uploads/banners/images',
-        'uploads/banners/videos',
-        'uploads/products/images',
-        'uploads/products/videos'
+        `${uploadRoot}/images`,
+        `${uploadRoot}/videos`,
+        `${uploadRoot}/banners/images`,
+        `${uploadRoot}/banners/videos`,
+        `${uploadRoot}/products/images`,
+        `${uploadRoot}/products/videos`
     ];
     
     directories.forEach(dir => {
@@ -26,7 +28,7 @@ ensureDirectoriesExist();
 // Common storage configuration
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        let uploadPath = "uploads/";
+        let uploadPath = `${uploadRoot}/`;
         
         // Determine destination based on field name
         if (file.fieldname === 'image' || file.fieldname === 'images') {
