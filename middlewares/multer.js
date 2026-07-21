@@ -1,107 +1,102 @@
 const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
+const cloudinary = require("cloudinary").v2;
 
-const uploadRoot = process.env.VERCEL ? "/tmp/uploads" : "uploads";
+// Use memory storage to avoid local filesystem writes
+const storage = multer.memoryStorage();
 
-// Ensure upload directories exist
-const ensureDirectoriesExist = () => {
-    const directories = [
-        `${uploadRoot}/images`,
-        `${uploadRoot}/videos`,
-        `${uploadRoot}/banners/images`,
-        `${uploadRoot}/banners/videos`,
-        `${uploadRoot}/products/images`,
-        `${uploadRoot}/products/videos`
-    ];
-    
-    directories.forEach(dir => {
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-        }
-    });
-};
-
-// Create directories on startup
-ensureDirectoriesExist();
-
-// Common storage configuration
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        let uploadPath = `${uploadRoot}/`;
-        
-        // Determine destination based on field name
-        if (file.fieldname === 'image' || file.fieldname === 'images') {
-            uploadPath += "products/images/";
-        } else if (file.fieldname === 'video' || file.fieldname === 'videos') {
-            uploadPath += "products/videos/";
-        } else if (file.fieldname === 'bannerImage') {
-            uploadPath += "banners/images/";
-        } else if (file.fieldname === 'bannerVideo') {
-            uploadPath += "banners/videos/";
-        } else if (file.fieldname === 'media') {
-            // For backward compatibility
-            uploadPath += "banners/";
-        } else if (file.fieldname === 'productImages') {
-            uploadPath += "products/images/";
-        } else if (file.fieldname === 'productVideo') {
-            uploadPath += "products/videos/";
-        } else {
-            uploadPath += "others/";
-        }
-        
-        // Create directory if it doesn't exist
-        if (!fs.existsSync(uploadPath)) {
-            fs.mkdirSync(uploadPath, { recursive: true });
-        }
-        
-        cb(null, uploadPath);
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-        const extension = path.extname(file.originalname);
-        const filename = file.fieldname + "-" + uniqueSuffix + extension;
-        cb(null, filename);
-    },
-});
-
-// Main upload instance
 const upload = multer({
     storage,
-    limits: { fileSize: 50 * 1024 * 1024 }, // 50MB default
+    limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
 });
 
-// Create middleware functions
+// Helper to upload a buffer directly to Cloudinary
+const uploadFileToCloudinary = async (file, folder) => {
+    if (!file || !file.buffer) return;
+    
+    let resource_type = "auto";
+    if (file.mimetype && file.mimetype.startsWith("video/")) {
+        resource_type = "video";
+    }
+    
+    const result = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+            { 
+                folder: folder, 
+                resource_type: resource_type 
+            },
+            (error, result) => {
+                if (error) return reject(error);
+                resolve(result);
+            }
+        );
+        stream.end(file.buffer);
+    });
+    
+    // Replace properties for controller compatibility
+    file.path = result.secure_url;
+    file.filename = result.public_id;
+};
+
+// Process uploads and send to Cloudinary
+const processUploads = async (req) => {
+    if (req.file) {
+        let folder = "others";
+        if (req.file.fieldname === 'image' || req.file.fieldname === 'media') {
+            folder = "offers";
+        }
+        await uploadFileToCloudinary(req.file, folder);
+    }
+    
+    if (req.files) {
+        const uploadPromises = [];
+        for (const fieldname in req.files) {
+            const filesList = req.files[fieldname];
+            let folder = "others";
+            if (fieldname.includes("banner")) {
+                folder = "banners";
+            } else if (fieldname.includes("product") || fieldname === "images" || fieldname === "video") {
+                folder = "products";
+            }
+            
+            filesList.forEach(file => {
+                uploadPromises.push(uploadFileToCloudinary(file, folder));
+            });
+        }
+        await Promise.all(uploadPromises);
+    }
+};
+
+// Middleware wrapper generator
+const wrapMiddleware = (multerMiddleware) => {
+    return (req, res, next) => {
+        multerMiddleware(req, res, async (err) => {
+            if (err) return next(err);
+            try {
+                await processUploads(req);
+                next();
+            } catch (uploadErr) {
+                console.error("Cloudinary Upload Error:", uploadErr);
+                next(uploadErr);
+            }
+        });
+    };
+};
+
 const uploadMiddleware = {
-    // Single file upload (for backward compatibility)
-    single: (fieldName) => upload.single(fieldName),
-    
-    // Multiple files upload
-    array: (fieldName, maxCount) => upload.array(fieldName, maxCount),
-    
-    // Multiple fields with multiple files
-    fields: (fields) => upload.fields(fields),
-    
-    // Specific middleware for banners (image + video)
-    bannerFiles: upload.fields([
+    single: (fieldName) => wrapMiddleware(upload.single(fieldName)),
+    array: (fieldName, maxCount) => wrapMiddleware(upload.array(fieldName, maxCount)),
+    fields: (fields) => wrapMiddleware(upload.fields(fields)),
+    bannerFiles: wrapMiddleware(upload.fields([
         { name: 'image', maxCount: 1 },
         { name: 'video', maxCount: 1 }
-    ]),
-    
-    // Specific middleware for products (up to 4 images + video)
-    productFiles: upload.fields([
+    ])),
+    productFiles: wrapMiddleware(upload.fields([
         { name: 'images', maxCount: 4 },
         { name: 'video', maxCount: 1 }
-    ]),
-    
-    // Single image upload
-    singleImage: upload.single('image'),
-    
-    // Single video upload
-    singleVideo: upload.single('video'),
-    
-    // For backward compatibility
-    singleMedia: upload.single('media')
+    ])),
+    singleImage: wrapMiddleware(upload.single('image')),
+    singleVideo: wrapMiddleware(upload.single('video')),
+    singleMedia: wrapMiddleware(upload.single('media'))
 };
 
 module.exports = uploadMiddleware;
