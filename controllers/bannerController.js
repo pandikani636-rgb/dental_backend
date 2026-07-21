@@ -1,8 +1,6 @@
 const Banner = require('../models/bannerModel');
 const asyncErrorHandler = require('../middlewares/asyncErrorHandler');
 const ErrorHandler = require('../utils/errorHandler');
-const fs = require('fs');
-const path = require('path');
 
 // Get All Active Banners (Public)
 exports.getAllBanners = asyncErrorHandler(async (req, res, next) => {
@@ -112,20 +110,13 @@ exports.updateBanner = asyncErrorHandler(async (req, res, next) => {
 
     // Handle new image upload
     if (req.files && req.files.image) {
-        // Delete old media file if exists
-        if (banner.media && banner.media.url) {
-            if (banner.media.url.startsWith('http')) {
-                const cloudinary = require('cloudinary').v2;
-                try {
-                    await cloudinary.uploader.destroy(banner.media.public_id);
-                } catch (err) {
-                    console.error("Failed to delete banner media from Cloudinary:", err);
-                }
-            } else {
-                const filePath = path.join(__dirname, "../", banner.media.url);
-                if (fs.existsSync(filePath)) {
-                    fs.unlinkSync(filePath);
-                }
+        // Delete old media file if exists on Cloudinary
+        if (banner.media && banner.media.url && banner.media.url.startsWith('http')) {
+            const cloudinary = require('cloudinary').v2;
+            try {
+                await cloudinary.uploader.destroy(banner.media.public_id);
+            } catch (err) {
+                console.error("Failed to delete banner media from Cloudinary:", err);
             }
         }
 
@@ -144,19 +135,12 @@ exports.updateBanner = asyncErrorHandler(async (req, res, next) => {
         if (videoUrl && videoUrl.trim()) {
             updatedData.videoUrl = videoUrl.trim();
             // Clear media if switching to video
-            if (banner.media && banner.media.url) {
-                if (banner.media.url.startsWith('http')) {
-                    const cloudinary = require('cloudinary').v2;
-                    try {
-                        await cloudinary.uploader.destroy(banner.media.public_id);
-                    } catch (err) {
-                        console.error("Failed to delete banner media from Cloudinary:", err);
-                    }
-                } else {
-                    const filePath = path.join(__dirname, "../", banner.media.url);
-                    if (fs.existsSync(filePath)) {
-                        fs.unlinkSync(filePath);
-                    }
+            if (banner.media && banner.media.url && banner.media.url.startsWith('http')) {
+                const cloudinary = require('cloudinary').v2;
+                try {
+                    await cloudinary.uploader.destroy(banner.media.public_id);
+                } catch (err) {
+                    console.error("Failed to delete banner media from Cloudinary:", err);
                 }
             }
             updatedData.media = undefined;
@@ -201,20 +185,13 @@ exports.deleteBanner = asyncErrorHandler(async (req, res, next) => {
         return next(new ErrorHandler("Banner Not Found", 404));
     }
 
-    // Delete media from uploads folder
-    if (banner.media && banner.media.url) {
-        if (banner.media.url.startsWith('http')) {
-            const cloudinary = require('cloudinary').v2;
-            try {
-                await cloudinary.uploader.destroy(banner.media.public_id);
-            } catch (err) {
-                console.error("Failed to delete banner media from Cloudinary:", err);
-            }
-        } else {
-            const filePath = path.join(__dirname, "../", banner.media.url);
-            if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
-            }
+    // Delete media from Cloudinary if exists
+    if (banner.media && banner.media.url && banner.media.url.startsWith('http')) {
+        const cloudinary = require('cloudinary').v2;
+        try {
+            await cloudinary.uploader.destroy(banner.media.public_id);
+        } catch (err) {
+            console.error("Failed to delete banner media from Cloudinary:", err);
         }
     }
 
