@@ -43,7 +43,7 @@ const AddBanner = () => {
         }
 
         try {
-            const response = await fetch('http://localhost:4000/api/v1/admin/banner/new', {
+            const response = await fetch('https://dental-backend-ten.vercel.app/api/v1/admin/banner/new', {
                 method: 'POST',
                 body: data,
                 credentials: 'include'

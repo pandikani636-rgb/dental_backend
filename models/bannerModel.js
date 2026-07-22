@@ -168,7 +168,7 @@ bannerSchema.virtual('media.fullUrl').get(function() {
     }
     
     // Otherwise, prepend with base URL (you can configure this)
-    const baseUrl = process.env.BASE_URL || 'http://localhost:4000';
+    const baseUrl = process.env.BASE_URL || 'https://dental-backend-ten.vercel.app';
     return `${baseUrl}/${this.media.url.replace(/^\/+/, '')}`;
 });
 

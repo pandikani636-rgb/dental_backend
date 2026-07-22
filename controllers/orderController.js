@@ -36,7 +36,8 @@ exports.newOrder = asyncErrorHandler(async (req, res, next) => {
         }
         // Fix image URL: remove backslashes and /admin/product/ path
         if (item.image) {
-            item.image = item.image.replace(/\\/g, '/').replace('http://localhost:4000/admin/product/', 'http://localhost:4000/');
+            const backendUrl = process.env.BACKEND_URL || 'https://dental-backend-ten.vercel.app';
+            item.image = item.image.replace(/\\/g, '/').replace('http://localhost:4000/admin/product/', `${backendUrl}/`).replace('https://dental-backend-ten.vercel.app/admin/product/', `${backendUrl}/`);
         }
     }
 
@@ -200,7 +201,7 @@ exports.newOrder = asyncErrorHandler(async (req, res, next) => {
     };
 
     const productDetailsHtml = order.orderItems.map((item) => {
-        const imageUrl = item.image || getImageUrl(item.image) || `${process.env.BACKEND_URL || 'http://localhost:4000'}/images/placeholder.jpg`;
+        const imageUrl = item.image || getImageUrl(item.image) || `${process.env.BACKEND_URL || 'https://dental-backend-ten.vercel.app'}/images/placeholder.jpg`;
         const priceWithGst = item.price + (item.price * (item.gst || 0) / 100);
         const total = priceWithGst * item.quantity;
         
