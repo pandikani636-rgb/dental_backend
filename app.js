@@ -12,22 +12,6 @@ if (process.env.NODE_ENV !== "production") {
     require("dotenv").config();
 }
 
-// Database Connection Middleware
-const connectDatabase = require("./config/database");
-let dbPromise = null;
-app.use(async (req, res, next) => {
-    if (!dbPromise) {
-        dbPromise = connectDatabase();
-    }
-    try {
-        await dbPromise;
-        next();
-    } catch (err) {
-        dbPromise = null;
-        next(err);
-    }
-});
-
 // ======================
 // CORS Configuration
 // ======================
@@ -51,6 +35,22 @@ app.use(
         credentials: true,
     })
 );
+
+// Database Connection Middleware
+const connectDatabase = require("./config/database");
+let dbPromise = null;
+app.use(async (req, res, next) => {
+    if (!dbPromise) {
+        dbPromise = connectDatabase();
+    }
+    try {
+        await dbPromise;
+        next();
+    } catch (err) {
+        dbPromise = null;
+        next(err);
+    }
+});
 
 // ======================
 // Middlewares
